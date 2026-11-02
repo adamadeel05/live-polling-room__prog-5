@@ -1,0 +1,42 @@
+# Dependencies and local package caches
+node_modules/
+.npm-cache/
+
+# Environment files and local secrets (commit examples only)
+.env
+.env.*
+*.env
+!.env.example
+.npmrc
+.netrc
+.aws/
+.ssh/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# SQLite data, journals, and write-ahead logging files
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Generated builds, test coverage, caches, and logs
+dist/
+build/
+coverage/
+.vite/
+.cache/
+*.log
+npm-debug.log*
+
+# Local editor, agent, and operating-system files
+.vscode/
+.idea/
+.codex/
+.DS_Store
+Thumbs.db
