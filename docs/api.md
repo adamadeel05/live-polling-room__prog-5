@@ -1,8 +1,9 @@
-# REST API guide
+# API guide
 
 See the [architecture](architecture.md), [project description](project-description.md),
 and detailed [Poll Service](../services/poll-service/README.md) and
-[Voting Service](../services/voting-service/README.md) guides.
+[Voting Service](../services/voting-service/README.md) and
+[Results Service](../services/results-service/README.md) guides.
 
 ## Addresses and conventions
 
@@ -10,12 +11,13 @@ and detailed [Poll Service](../services/poll-service/README.md) and
 | --- | --- | --- |
 | Poll | `http://localhost:3001` | Health and poll management |
 | Voting | `http://localhost:3002` | Health, vote submission, counts, and totals |
-| Results | `http://localhost:3003` | Health only |
+| Results | `http://localhost:3003` | Health, result snapshots, and Socket.IO poll rooms |
 
 Each service allows the React client's default origin, `http://localhost:5173`,
 through CORS. Service `.env.example` files document configurable ports and origins;
-Voting also uses `POLL_SERVICE_URL=http://localhost:3001`.
-Send JSON bodies with `Content-Type: application/json`. Poll and Voting request
+Voting also uses `POLL_SERVICE_URL` and `RESULTS_SERVICE_URL`; Results uses
+`POLL_SERVICE_URL` and `VOTING_SERVICE_URL`, defaulting to the URLs above.
+Send JSON bodies with `Content-Type: application/json`. Service request
 bodies are limited to 16 KB. Their errors use `{ "error": "Readable explanation." }`.
 IDs are positive safe integers. Room codes are six-digit strings from `100000` to
 `999999`. The examples below use illustrative values, never actual database data
@@ -128,6 +130,108 @@ A Poll Service connection failure or timeout returns 503. The request and respon
 body share a three-second timeout. Unexpected upstream statuses or invalid poll
 data return 502. Voting uses its own SQLite database and reads polls through REST.
 
+After a vote is saved, Voting sends a best-effort Results notification containing
+only `pollId`. The 201 response does not wait for that request. A notification
+failure or two-second timeout is logged without rolling back the accepted vote.
+
+## Results Service
+
+| Method | Path | Success |
+| --- | --- | --- |
+| GET | `/results/:pollId` | 200: complete result snapshot |
+| POST | `/internal/votes` | 200: `{ "ok": true, "pollId": 1 }` after refreshing and broadcasting |
+
+Results reads the Poll Service's `/polls/:id`, then the Voting Service's
+`/votes/:pollId/counts`. It stores no database or results cache. Both upstream
+services must be available; each request has a separate three-second timeout
+that includes reading its body. Closed polls remain readable with 200.
+
+`GET /results/:pollId` and the `results-update` socket event share this payload:
+
+```json
+{
+  "pollId": 1,
+  "question": "Which language?",
+  "roomCode": "483921",
+  "status": "open",
+  "totalVotes": 3,
+  "results": [
+    { "optionId": 1, "text": "JavaScript", "count": 2, "percentage": 66.67 },
+    { "optionId": 2, "text": "Java", "count": 1, "percentage": 33.33 }
+  ]
+}
+```
+
+All options appear in Poll Service order, including options with zero votes.
+Percentages are rounded to two decimal places and can sum to slightly more or
+less than 100. A poll with no votes has zero counts and zero percentages.
+
+`POST /internal/votes` accepts `{ "pollId": 1 }` with a numeric positive safe
+integer. This notification triggers a fresh lookup and broadcasts the resulting
+snapshot to room `poll:1`. Supplied counts are not used. The endpoint adds no
+new authentication. Joins and notification broadcasts are serialized per poll so
+an older lookup cannot overwrite a newer broadcast.
+
+Invalid IDs or bodies return 400, missing polls return 404, and unexpected
+upstream statuses or malformed data return 502. Unavailable or timed-out services
+and upstream 503 responses return 503.
+
+### Socket.IO contract
+
+Connect to `http://localhost:3003` using a Socket.IO client.
+
+| Direction | Event | Payload |
+| --- | --- | --- |
+| Client to server | `join-poll` | `{ "pollId": 1 }`, with a numeric positive safe integer |
+| Server to client | `results-update` | Complete snapshot shown above |
+| Server to client | `results-error` | `{ "pollId": 1, "status": 503, "error": "Readable explanation." }` |
+
+`pollId` is omitted from `results-error` when the join input has no valid ID.
+`join-poll` optionally acknowledges with `{ "ok": true, "pollId": 1 }` or
+`{ "ok": false, "status": 404, "error": "Readable explanation." }`.
+Joining sends a fresh snapshot and subscribes to that poll's updates. Each
+socket watches one poll; a new join leaves the old room even if the new ID is
+invalid. Disconnects leave rooms, and replaced or disconnected join requests
+cannot deliver an old snapshot or join afterward.
+
+A handshake with `auth: { pollId: 1 }` joins automatically on every connection
+and reconnection. Alternatively, emit `join-poll` inside each `connect` handler.
+This field selects the poll; it does not authenticate a user. Host tokens remain
+required only for closing polls through the Poll API.
+
+Notifications are best-effort, with no retry queue. A fresh GET, rejoin,
+reconnect, or later successful notification recovers updates missed during an
+outage. The React page remains static; the following is a standalone example.
+
+From the project root, run this PowerShell block using the existing
+`socket.io-client` dependency in `client`. Replace `1` with a poll ID returned
+by poll creation, and stop the example with Ctrl+C:
+
+```powershell
+Set-Location client
+@'
+import { io } from 'socket.io-client';
+
+const pollId = 1;
+const socket = io('http://localhost:3003', { auth: { pollId } });
+
+socket.on('connect', () => console.log('Connected:', socket.id));
+socket.on('results-update', (results) => console.log(JSON.stringify(results, null, 2)));
+socket.on('results-error', (error) => console.error(error));
+socket.on('connect_error', (error) => console.error(error.message));
+'@ | node --input-type=module
+```
+
+For the explicit-join alternative, omit `auth` when creating the socket and use:
+
+```javascript
+socket.on('connect', () => {
+  socket.emit('join-poll', { pollId }, (acknowledgement) => {
+    console.log(acknowledgement);
+  });
+});
+```
+
 ## Error reference
 
 | Status | Meaning |
@@ -137,20 +241,21 @@ data return 502. Voting uses its own SQLite database and reads polls through RES
 | 403 | Poll close request contains an incorrect host token |
 | 404 | Poll or endpoint does not exist |
 | 409 | Poll is closed, host repeats a close, or participant already voted |
-| 413 | Poll or Voting JSON request body exceeds 16 KB |
-| 415 | Voting request uses an unsupported JSON charset or content encoding |
+| 413 | JSON request body exceeds 16 KB |
+| 415 | Voting or Results request uses an unsupported JSON charset or content encoding |
 | 500 | Unexpected internal error; response does not expose internal details |
-| 502 | Voting received an unexpected response or invalid data from Poll Service |
-| 503 | Poll room-code retry limit reached, or Voting cannot reach Poll Service within its timeout |
+| 502 | Voting or Results received an unexpected upstream response or invalid data |
+| 503 | Poll room-code retry limit reached, an upstream service is unavailable or timed out, or Results received an upstream 503 |
 
 ## PowerShell walkthrough
 
-Start the Poll and Voting services, then create a poll, submit a vote, inspect
-counts, and close the poll using values returned by the APIs:
+Start all three services, then create a poll, submit a vote, inspect counts and
+results, and close the poll using values returned by the APIs:
 
 ```powershell
 $pollApi = 'http://localhost:3001'
 $voteApi = 'http://localhost:3002'
+$resultsApi = 'http://localhost:3003'
 $pollBody = @{ question = 'Which language?'; options = @('JavaScript', 'Java') } | ConvertTo-Json
 $poll = Invoke-RestMethod -Method Post -Uri "$pollApi/polls" -ContentType 'application/json' -Body $pollBody
 
@@ -163,10 +268,12 @@ $voteBody = @{
 Invoke-RestMethod -Method Post -Uri "$voteApi/votes" -ContentType 'application/json' -Body $voteBody
 Invoke-RestMethod -Uri "$voteApi/votes/$($poll.id)/counts"
 Invoke-RestMethod -Uri "$voteApi/votes/$($poll.id)/total"
+Invoke-RestMethod -Uri "$resultsApi/results/$($poll.id)" | ConvertTo-Json -Depth 4
 
 $hostHeaders = @{ Authorization = "Bearer $($poll.hostToken)" }
 Invoke-RestMethod -Method Patch -Uri "$pollApi/polls/$($poll.id)/close" -Headers $hostHeaders
 ```
 
-Results Service currently exposes only `/health`. Socket.IO events and a Results
-API are not implemented yet; the Voting count endpoints are ordinary REST calls.
+The vote triggers a Results notification automatically. A Socket.IO client
+subscribed to this poll receives the refreshed snapshot. Poll closing does not
+send a vote notification; fetch or rejoin to read the latest closed status.

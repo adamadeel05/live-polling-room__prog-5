@@ -7,6 +7,7 @@ import { openDatabase } from './database.js';
 const port = Number(process.env.PORT || 3002);
 const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const pollServiceUrl = process.env.POLL_SERVICE_URL || 'http://localhost:3001';
+const resultsServiceUrl = process.env.RESULTS_SERVICE_URL || 'http://localhost:3003';
 const serviceDirectory = fileURLToPath(new URL('../', import.meta.url));
 const databasePath = resolve(serviceDirectory, process.env.DATABASE_PATH || 'data/votes.db');
 
@@ -16,13 +17,15 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 try {
-  const pollUrl = new URL(pollServiceUrl);
-  if (!['http:', 'https:'].includes(pollUrl.protocol) || pollUrl.search || pollUrl.hash) {
-    throw new Error('POLL_SERVICE_URL must be an HTTP or HTTPS base URL without a query or fragment.');
+  for (const [name, value] of [['POLL_SERVICE_URL', pollServiceUrl], ['RESULTS_SERVICE_URL', resultsServiceUrl]]) {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.search || url.hash) {
+      throw new Error(`${name} must be an HTTP or HTTPS base URL without a query or fragment.`);
+    }
   }
 
   const db = openDatabase(databasePath);
-  const app = createApp(db, { port, clientOrigin, pollServiceUrl });
+  const app = createApp(db, { port, clientOrigin, pollServiceUrl, resultsServiceUrl });
   const server = app.listen(port, (error) => {
     if (error) {
       console.error(`Voting Service failed to start: ${error.message}`);

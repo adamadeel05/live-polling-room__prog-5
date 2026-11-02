@@ -1,7 +1,7 @@
 # Live Polling Room (Slido Lite)
 
-Programming 5 university project. Parts 1-3 set up one React client, three
-independent Express services, and persistent Poll and Voting Service APIs. Each
+Programming 5 university project. Parts 1-4 set up one React client, three
+independent Express services, persistent Poll and Voting APIs, and live results. Each
 application has its own `package.json` and `package-lock.json`; there are no npm workspaces
 or shared server code.
 
@@ -12,7 +12,7 @@ or shared server code.
 | `client/` | React source, Vite/Tailwind configuration, and the static setup page |
 | `services/poll-service/` | Poll REST API, SQLite setup, tests, and service guide |
 | `services/voting-service/` | Vote REST API, Poll Service client, SQLite setup, tests, and service guide |
-| `services/results-service/` | Express health endpoint scaffold for a later part |
+| `services/results-service/` | Results REST API, percentage calculations, Socket.IO rooms, tests, and service guide |
 | `docs/` | Project description, Mermaid architecture diagrams, and API documentation |
 | `.gitignore` | Rules excluding dependencies, local data, secrets, and generated files |
 
@@ -27,6 +27,7 @@ start and are excluded from Git.
 - [REST API documentation](docs/api.md)
 - [Detailed Poll Service guide](services/poll-service/README.md)
 - [Detailed Voting Service guide](services/voting-service/README.md)
+- [Detailed Results Service guide](services/results-service/README.md)
 
 ## Requirements and dependencies
 
@@ -39,8 +40,8 @@ and npm 11.11.0.
 
 The Poll Service uses SQLite for polls and options. The Voting Service uses its
 own SQLite database for votes and Node's built-in `fetch` for Poll Service REST
-requests. Socket.IO and Recharts remain installed for later parts; socket
-connections and charts are not implemented yet.
+requests. The Results Service uses Socket.IO to broadcast fresh snapshots read
+from those APIs. Recharts remains installed for the future React results screen.
 Tailwind uses its Vite plugin, so no separate PostCSS or Tailwind config is needed.
 
 ## Install
@@ -100,6 +101,13 @@ and `POLL_SERVICE_URL=http://localhost:3001` to verify polls through REST.
 Start the Poll Service before submitting votes or reading vote counts. See the
 [Voting Service API guide](services/voting-service/README.md) for configuration,
 request examples, and error responses.
+
+Voting also uses `RESULTS_SERVICE_URL=http://localhost:3003` to notify Results
+after saving a vote. Results uses `POLL_SERVICE_URL=http://localhost:3001` and
+`VOTING_SERVICE_URL=http://localhost:3002`. It has no database. Start all three
+services for live updates; Poll and Voting must be available for results reads.
+See the [Results Service guide](services/results-service/README.md) for REST and
+Socket.IO usage.
 
 The client environment template lists `VITE_POLL_SERVICE_URL`,
 `VITE_VOTING_SERVICE_URL`, and `VITE_RESULTS_SERVICE_URL` for later API calls.
@@ -266,9 +274,61 @@ A file checksum check confirmed that all 21 existing source, configuration, and
 documentation files outside the Voting Service and this README were unchanged.
 No dependencies were added.
 
+## Part 4: Results Service
+
+The Results Service on port 3003 reads Poll and Voting REST APIs, calculates
+percentages rounded to two decimal places, and sends live snapshots over
+Socket.IO. Results include every option, including options with no votes.
+Closed polls remain readable. There is no extra database or result cache.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/results/:pollId` | Read poll details, vote counts, total votes, and percentages |
+| POST | `/internal/votes` | Receive `{ "pollId": 1 }` from Voting, reread stored counts, and broadcast |
+
+Socket.IO uses the same port. Clients can send `join-poll` with `{ pollId: 1 }`
+or connect with `auth: { pollId: 1 }`. A socket watches one poll at a time and
+receives `results-update` with the same payload as the GET endpoint. The auth
+payload is a subscription parameter, not a login system. It is reused on
+reconnection, when the server sends another fresh snapshot. Join failures and
+refresh failures use `results-error`.
+
+Voting sends its existing 201 response after the vote is stored, then notifies
+Results in the background. Notification failures are logged and do not undo a
+vote or turn it into an error response. These notifications are best effort,
+with a two-second timeout and no durable retry queue. A missed update is
+recovered by a GET, rejoining/reconnecting, or the next successful notification.
+The Results Service fetches fresh data on every request and serializes live
+refreshes for each poll so older snapshots cannot overwrite newer updates.
+
+The React page is unchanged. The service guide includes a standalone Socket.IO
+client example for trying live updates without adding frontend features.
+
+Run every service test suite and the client build from the project root:
+
+```powershell
+npm --prefix services/poll-service test
+npm --prefix services/voting-service test
+npm --prefix services/results-service test
+npm --prefix client run build
+```
+
+Install all four applications first: Results integration tests reuse the existing
+client Socket.IO dependency and the real Poll and Voting apps with temporary
+databases. No new dependencies are required.
+
+Part 4 verification on November 2, 2026: **36 tests passed, 0 failed** across
+Poll (8), Voting (16), and Results (12). The client production build also passed.
+The new tests cover percentages, empty and closed polls, real vote-triggered
+Socket.IO broadcasts, room isolation, reconnect snapshots, disconnected and
+replaced subscribers, concurrent votes, invalid upstream data, timeouts, and
+notification failures that preserve accepted votes. Tests use isolated temporary
+databases and do not alter normal poll or vote data. The React and Poll Service
+source files are unchanged in Part 4.
+
 ## Scope
 
-Parts 1-3 contain project structure, configured ports and CORS, a static frontend,
-service health endpoints, and persistent Poll and Voting Service APIs. The client
-and Results Service remain at their Part 1 implementation. Socket.IO events and
-live charts are reserved for later parts after approval.
+Parts 1-4 contain project structure, configured ports and CORS, a static frontend,
+service health endpoints, persistent Poll and Voting APIs, and REST/Socket.IO
+results. Connecting the React screens, implementing room joining in the UI, and
+rendering Recharts charts are reserved for later parts after approval.

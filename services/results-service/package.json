@@ -6,7 +6,8 @@
   "description": "Results Service for the Live Polling Room university project.",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.12.0"

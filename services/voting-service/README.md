@@ -2,8 +2,9 @@
 
 This service records anonymous votes and returns vote counts through REST APIs.
 It uses the existing Express, `cors`, `dotenv`, and `better-sqlite3` dependencies,
-plus Node's built-in `fetch`. No new dependencies are required. Socket.IO and
-live results are outside this part.
+plus Node's built-in `fetch`. No new dependencies are required. Part 4 adds
+best-effort notifications to the Results Service after a vote is saved; the
+Voting Service itself continues to expose REST endpoints.
 
 ## Run and test
 
@@ -43,10 +44,12 @@ to `.env` in this service folder and restart the service:
 PORT=3002
 CLIENT_ORIGIN=http://localhost:5173
 POLL_SERVICE_URL=http://localhost:3001
+RESULTS_SERVICE_URL=http://localhost:3003
 DATABASE_PATH=data/votes.db
 ```
 
-`POLL_SERVICE_URL` must be an HTTP or HTTPS base URL without a query or fragment.
+`POLL_SERVICE_URL` and `RESULTS_SERVICE_URL` must be HTTP or HTTPS base URLs
+without a query or fragment.
 `DATABASE_PATH` is a file path. Relative paths resolve from the Voting Service
 folder, even when the service is started from another directory; absolute paths
 also work. The default file is `services/voting-service/data/votes.db`. The
@@ -123,6 +126,19 @@ the Poll Service must be available for these reads as well as for voting.
 Counts and totals remain readable after a poll is closed. `/health` checks
 that the Voting Service is running without requesting the Poll Service.
 
+## Results notification (Part 4)
+
+After inserting a vote, the service sends `POST /internal/votes` to
+`RESULTS_SERVICE_URL` with only `{ "pollId": 1 }`. The Results Service rereads
+stored counts and broadcasts a fresh snapshot to that poll's Socket.IO room.
+
+Notification delivery runs without waiting before returning the vote's 201
+response. A failed request or two-second timeout is logged; the persisted vote
+remains accepted. Rejected and duplicate votes do not trigger a notification.
+There is no retry queue. Results can recover missed updates through a fresh GET,
+rejoin, reconnect, or the next successful notification. See the
+[Results Service guide](../results-service/README.md) for the event contract.
+
 ## PowerShell example
 
 With the Poll Service and Voting Service running, use another terminal. This
@@ -196,6 +212,12 @@ zero-vote options and option order, totals, CORS, malformed and oversized JSON,
 upstream failures, and persistence after reopening SQLite and restarting the
 app. Tests remove their temporary data afterward.
 
+Part 4 notification tests also check the poll-ID-only payload, rejection paths,
+non-blocking responses, and persistence when Results is offline, returns an
+error, or times out while sending its response body.
+
+## Part 3 verification record
+
 Verified on November 2, 2026: `npm test` completed with **10 passed, 0 failed**.
 
 A separate verification launched the real `src/index.js` process and restarted
@@ -209,3 +231,10 @@ available temporary port. The default configuration remains port 3002, and the
 existing process was left running. Verification used isolated temporary Poll and
 Voting databases; the verification processes were stopped and temporary files
 removed afterward. No existing poll or vote data was overwritten.
+
+## Part 4 verification record
+
+Verified on November 2, 2026: **16 tests passed, 0 failed**, including all 10
+existing Voting tests and 6 new notification tests. The Poll and Results test
+suites and the client production build also passed. No dependencies or database
+schema changes were needed for notifications.

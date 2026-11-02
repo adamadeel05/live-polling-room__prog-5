@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchPoll } from './poll-client.js';
+import { notifyResults } from './results-notifier.js';
 
 function isPositiveId(value) {
   return Number.isSafeInteger(value) && value > 0;
@@ -29,6 +30,8 @@ export function createApp(db, {
   clientOrigin = 'http://localhost:5173',
   pollServiceUrl = 'http://localhost:3001',
   pollRequestTimeoutMs = 3000,
+  resultsServiceUrl = null,
+  resultsNotificationTimeoutMs = 2000,
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -65,15 +68,22 @@ export function createApp(db, {
       return res.status(400).json({ error: 'Selected option does not belong to this poll.' });
     }
 
+    let voteId;
     try {
       const { lastInsertRowid } = insertVote.run(pollId, optionId, participantId);
-      return res.status(201).json({ id: Number(lastInsertRowid), pollId, optionId });
+      voteId = Number(lastInsertRowid);
     } catch (error) {
       // The database also protects against simultaneous duplicate requests.
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         return res.status(409).json({ error: 'Participant has already voted in this poll.' });
       }
       throw error;
+    }
+
+    res.status(201).json({ id: voteId, pollId, optionId });
+    // The vote is saved and acknowledged before notifying the Results Service.
+    if (resultsServiceUrl) {
+      void notifyResults(pollId, resultsServiceUrl, resultsNotificationTimeoutMs);
     }
   });
 

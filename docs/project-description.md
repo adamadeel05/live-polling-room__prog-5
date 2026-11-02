@@ -11,9 +11,9 @@ anonymous votes while the results update instantly on the host's screen.
 3. Participants enter the code and vote without creating accounts.
 4. The host watches a live results chart and can close the poll.
 
-## Current implementation: Parts 1-3
+## Current implementation: Parts 1-4
 
-The project currently provides the service setup and persistent REST APIs.
+The project provides persistent REST APIs and a Socket.IO results stream.
 The React client is a static setup page; it does not yet create polls, join
 rooms, submit votes, or display results.
 
@@ -22,12 +22,16 @@ rooms, submit votes, or display results.
 | React client, port 5173 | Static project page and configured service URLs |
 | Poll Service, port 3001 | Create polls with 2-4 options, generate unique six-digit room codes, retrieve polls, and authorize host-only closing |
 | Voting Service, port 3002 | Validate and store anonymous votes, prevent duplicate votes per participant and poll, and return counts and totals |
-| Results Service, port 3003 | Health endpoint and configuration only |
+| Results Service, port 3003 | Aggregate poll results through REST and broadcast fresh snapshots to Socket.IO poll rooms |
 
 Polls, ordered options, room codes, status, and host-token hashes persist in the
 Poll Service's SQLite database. Votes persist in a separate Voting Service
 database. The Voting Service checks the Poll Service through REST before
 accepting votes. All three services expose `GET /health`.
+
+After saving a vote, the Voting Service sends a best-effort notification to the
+Results Service. Results are read from the Poll and Voting APIs and broadcast
+to subscribers of that poll. Joining or reconnecting retrieves a fresh snapshot.
 
 The project has no user accounts or login system. A host token authorizes
 closing a poll. An anonymous participant ID supports duplicate detection; it
@@ -41,7 +45,7 @@ does not prove a person's identity.
 | Backend | Node.js, Express.js, `cors`, `dotenv` |
 | Persistence | SQLite through `better-sqlite3` |
 | Service communication | REST over HTTP using Node's built-in `fetch` |
-| Planned live updates | Socket.IO server and client packages, installed but unused |
+| Live updates | Socket.IO poll rooms and complete result snapshots |
 | Planned charts | Recharts, installed but unused |
 | Language | JavaScript |
 
@@ -57,12 +61,13 @@ From the project root, useful checks are:
 ```powershell
 npm --prefix services/poll-service test
 npm --prefix services/voting-service test
+npm --prefix services/results-service test
 npm --prefix client run build
 ```
 
 The next implementation stages will connect the React screens to the APIs and
-add Socket.IO updates and Recharts visualizations. Those features are planned;
-the current API implementation does not provide live results.
+Socket.IO stream, then add Recharts visualizations. The backend supports live
+results; the browser interface and charts remain planned work.
 
 See the [architecture](architecture.md) for service ownership and request flows,
 and the [API reference](api.md) for endpoint details.
