@@ -1,7 +1,7 @@
 # Live Polling Room (Slido Lite)
 
-Programming 5 university project. Parts 1-4 set up one React client, three
-independent Express services, persistent Poll and Voting APIs, and live results. Each
+Programming 5 university project. Parts 1-5 provide a responsive React interface,
+three independent Express services, persistent polls and votes, and live results. Each
 application has its own `package.json` and `package-lock.json`; there are no npm workspaces
 or shared server code.
 
@@ -9,7 +9,7 @@ or shared server code.
 
 | Path | Contents |
 | --- | --- |
-| `client/` | React source, Vite/Tailwind configuration, and the static setup page |
+| `client/` | Responsive host and participant screens, live Recharts results, API/storage helpers, and frontend tests |
 | `services/poll-service/` | Poll REST API, SQLite setup, tests, and service guide |
 | `services/voting-service/` | Vote REST API, Poll Service client, SQLite setup, tests, and service guide |
 | `services/results-service/` | Results REST API, percentage calculations, Socket.IO rooms, tests, and service guide |
@@ -25,6 +25,7 @@ start and are excluded from Git.
 - [Project description and current scope](docs/project-description.md)
 - [Architecture and Mermaid diagrams](docs/architecture.md)
 - [REST API documentation](docs/api.md)
+- [Frontend guide and browser storage](client/README.md)
 - [Detailed Poll Service guide](services/poll-service/README.md)
 - [Detailed Voting Service guide](services/voting-service/README.md)
 - [Detailed Results Service guide](services/results-service/README.md)
@@ -41,7 +42,7 @@ and npm 11.11.0.
 The Poll Service uses SQLite for polls and options. The Voting Service uses its
 own SQLite database for votes and Node's built-in `fetch` for Poll Service REST
 requests. The Results Service uses Socket.IO to broadcast fresh snapshots read
-from those APIs. Recharts remains installed for the future React results screen.
+from those APIs. The React host workspace displays those updates with Recharts.
 Tailwind uses its Vite plugin, so no separate PostCSS or Tailwind config is needed.
 
 ## Install
@@ -71,9 +72,9 @@ Each process runs independently. Stop it with Ctrl+C in its terminal.
 Services use Node's built-in watch mode to restart after source changes.
 Use `npm --prefix services/<service-name> start` to run a service without watching.
 
-The client shows a static setup page. Its listed ports are configuration details,
-not live service status. Vite uses `strictPort`, so it fails clearly if port 5173
-is busy instead of silently using another port.
+Open `http://localhost:5173` and choose **Create poll** or **Join poll**. Start all
+three backend services to use the full interface. Vite uses `strictPort`, so it
+fails clearly if port 5173 is busy instead of silently using another port.
 
 ## Environment and CORS
 
@@ -109,11 +110,10 @@ services for live updates; Poll and Voting must be available for results reads.
 See the [Results Service guide](services/results-service/README.md) for REST and
 Socket.IO usage.
 
-The client environment template lists `VITE_POLL_SERVICE_URL`,
-`VITE_VOTING_SERVICE_URL`, and `VITE_RESULTS_SERVICE_URL` for later API calls.
-The Part 1 page does not make service requests yet. Vite exposes `VITE_` variables
-to the browser, so do not put secrets in them. Restart an application after
-changing its environment settings.
+The client uses `VITE_POLL_SERVICE_URL`, `VITE_VOTING_SERVICE_URL`, and
+`VITE_RESULTS_SERVICE_URL` for REST and Socket.IO connections. They default to
+ports 3001, 3002, and 3003. Vite exposes `VITE_` variables to the browser, so do not
+put secrets in them. Restart an application after changing its environment.
 
 ## Verify
 
@@ -301,8 +301,8 @@ recovered by a GET, rejoining/reconnecting, or the next successful notification.
 The Results Service fetches fresh data on every request and serializes live
 refreshes for each poll so older snapshots cannot overwrite newer updates.
 
-The React page is unchanged. The service guide includes a standalone Socket.IO
-client example for trying live updates without adding frontend features.
+In Part 4, the React page remained unchanged. The service guide includes a
+standalone Socket.IO client example for trying the stream independently.
 
 Run every service test suite and the client build from the project root:
 
@@ -326,9 +326,59 @@ notification failures that preserve accepted votes. Tests use isolated temporary
 databases and do not alter normal poll or vote data. The React and Poll Service
 source files are unchanged in Part 4.
 
+## Part 5: React frontend
+
+The homepage provides Create poll and Join poll paths. Hosts can create a question
+with 2-4 options, copy the generated six-digit code, follow a live Recharts graph
+with readable vote totals and percentages, and confirm closing the poll. The
+host workspace is loaded on demand so the homepage does not load the chart code.
+
+Participants enter a room code, choose one answer, and see a confirmation after
+voting. A browser-generated participant ID and per-poll receipt persist in local
+storage. SQLite remains responsible for enforcing one vote per ID per poll.
+Host tokens are kept in memory and tab-scoped session storage, never in URLs or
+participant responses. Reloading the original host tab restores its controls.
+
+The frontend uses the existing REST endpoints and emits `join-poll` on each
+Socket.IO connection, including reconnections. Initial REST snapshots and socket
+updates are merged so an old response cannot lower a known total or reopen a
+closed poll. Host results can be refreshed manually. Participants check status
+when their tab becomes visible and before submitting a vote, since closing a poll
+does not generate a vote notification in the current backend.
+
+Loading, invalid codes, missing polls, duplicate votes, closed polls, unavailable
+storage, and connection failures have visible states. Forms have labels and
+keyboard focus styles; results include readable answer rows alongside the chart.
+Layouts adapt to small screens and respect reduced-motion preferences.
+
+Run frontend tests and build from the project root:
+
+```powershell
+npm --prefix client test
+npm --prefix client run build
+```
+
+The frontend tests cover API requests and errors, persistent storage, delayed
+snapshot handling, and static React rendering through Vite. Static rendering
+tests check forms and accessible results text; they do not simulate browser
+interactions, layout, chart sizing, or reconnection effects.
+
+See the [frontend guide](client/README.md) for navigation, storage behavior,
+configuration, and the manual browser verification steps.
+
+Part 5 verification on November 3, 2026: **58 automated tests passed, 0 failed**:
+22 client tests and all 36 existing backend tests. The production build passed,
+with the host/chart code split from the initial application bundle. No packages
+or backend source files were changed.
+
+Interactive browser and visual/mobile verification remain incomplete. Computer
+Use ended because it could not confidently identify Chrome's current URL for
+its policy checks. No browser checks are claimed as passed. The isolated preview
+was stopped and its temporary files and databases were removed.
+
 ## Scope
 
-Parts 1-4 contain project structure, configured ports and CORS, a static frontend,
+Parts 1-5 include the React host/participant interface, configured ports and CORS,
 service health endpoints, persistent Poll and Voting APIs, and REST/Socket.IO
-results. Connecting the React screens, implementing room joining in the UI, and
-rendering Recharts charts are reserved for later parts after approval.
+results with Recharts. Part 6 has not been started. Backend source code and
+dependencies are unchanged in Part 5.

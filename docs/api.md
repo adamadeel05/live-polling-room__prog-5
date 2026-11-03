@@ -23,6 +23,30 @@ IDs are positive safe integers. Room codes are six-digit strings from `100000` t
 `999999`. The examples below use illustrative values, never actual database data
 or host credentials.
 
+## React integration (Part 5)
+
+The React client uses these existing endpoints without changing the backend
+contracts: poll creation and retrieval, room-code lookup, vote submission,
+host-only closing, and Results snapshots and Socket.IO events. Client service
+URLs come from the three `VITE_*_SERVICE_URL` values in `client/.env.example`.
+Requests have a ten-second timeout including the body and surface validation,
+missing-poll, duplicate-vote, closed-poll, and service errors in the interface.
+
+The host saves the full creation response in same-tab `sessionStorage` under
+`lpr.host.<pollId>`. Its token is used only for the existing close authorization,
+and never appears in a URL or `localStorage`. A failed save leaves the response
+in memory for the current page; refresh cannot restore that fallback.
+Participants store their anonymous ID in `localStorage` as `lpr.participantId`
+and a per-poll confirmation receipt as `lpr.vote.<pollId>`. The backend unique
+constraint remains responsible for duplicate rejection if a receipt is missing.
+
+The host starts a REST result request alongside its Socket.IO connection and
+emits `join-poll` on every `connect`, including reconnects. It handles
+`results-update`, prevents lower totals from overwriting newer results, and
+preserves closed status against stale snapshots. Manual refresh and retry
+restart the connection and snapshot request. See the
+[client guide](../client/README.md) for routes and storage behavior.
+
 ## Health
 
 `GET /health` returns 200 on all three services. Its JSON identifies the service
@@ -195,13 +219,15 @@ invalid. Disconnects leave rooms, and replaced or disconnected join requests
 cannot deliver an old snapshot or join afterward.
 
 A handshake with `auth: { pollId: 1 }` joins automatically on every connection
-and reconnection. Alternatively, emit `join-poll` inside each `connect` handler.
+and reconnection. Alternatively, emit `join-poll` inside each `connect` handler,
+as the React host screen does.
 This field selects the poll; it does not authenticate a user. Host tokens remain
 required only for closing polls through the Poll API.
 
 Notifications are best-effort, with no retry queue. A fresh GET, rejoin,
 reconnect, or later successful notification recovers updates missed during an
-outage. The React page remains static; the following is a standalone example.
+outage. The following standalone example exercises the same results stream
+without opening the React interface.
 
 From the project root, run this PowerShell block using the existing
 `socket.io-client` dependency in `client`. Replace `1` with a poll ID returned
@@ -277,3 +303,7 @@ Invoke-RestMethod -Method Patch -Uri "$pollApi/polls/$($poll.id)/close" -Headers
 The vote triggers a Results notification automatically. A Socket.IO client
 subscribed to this poll receives the refreshed snapshot. Poll closing does not
 send a vote notification; fetch or rejoin to read the latest closed status.
+React participant pages reread the poll on window focus, when the document
+becomes visible, and before voting. A closed-poll 409 response marks the poll
+closed; an already-voted 409 restores confirmation without recording another
+vote. The host updates its own closed state after its authorized close request.

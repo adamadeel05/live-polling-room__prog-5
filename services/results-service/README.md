@@ -98,7 +98,8 @@ Set `auth: { pollId: 1 }` when creating the Socket.IO client to join automatical
 on each connection and reconnection. Alternatively, emit `join-poll` from every
 `connect` handler. Handshake `auth.pollId` selects a room; it does not authenticate
 a user. The [API guide](../../docs/api.md) includes an executable Node example
-using the existing client dependency. The React page remains static.
+using the existing client dependency. The React host workspace now uses the
+explicit-join approach, with Recharts results.
 
 ## Notifications and delivery
 
