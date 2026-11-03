@@ -25,7 +25,7 @@ Vite serves the React application; its API and Socket.IO calls run in the
 browser. Hash routes provide home, create, join, participant, and host screens
 without a router dependency. All three services expose `/health`. Results uses
 one HTTP server for Express routes and Socket.IO, with no database or stored
-results cache. Part 5 changes the client while keeping these backend contracts.
+results cache. The final project retains these three service boundaries.
 
 ## Data ownership
 
@@ -111,7 +111,8 @@ Socket.IO user authentication is added.
 The host starts a REST snapshot request alongside its Socket.IO connection and
 consumes `results-update` snapshots. A nondecreasing total-vote guard prevents a
 stale REST response from replacing newer socket data; a poll already marked
-closed is not reopened by a stale snapshot. Manual refresh and retry restart
+closed is not reopened by a stale snapshot. A delayed closed snapshot still
+closes the display while retaining any newer counts. Manual refresh and retry restart
 the result connection and request. Recharts and result rows show option counts
 and percentages without a periodic polling interval.
 
@@ -153,6 +154,17 @@ Voting SQLite files. It owns only those processes and test files. Real service
 restarts exercise persistence and Socket.IO reconnection without touching normal
 development data. The [integration guide](integration-testing.md) distinguishes
 HTTP/socket tests, static React checks, and manual browser verification.
+
+## Final review (Part 7)
+
+The final package inventory confirms exactly three service packages and one
+React client, each with its own lockfile. Results has no SQLite dependency or
+database. The two SQLite owners and the REST/Socket.IO connections above were
+reverified by the final automated run: 64 tests passed, 0 failed, and the client
+production build passed. All architecture diagrams in the repository use Mermaid.
+
+See the [submission guide](submission-guide.md) for installation and a professor
+demonstration, including browser checks that remain manual.
 
 See the [project description](project-description.md), [API reference](api.md),
 and [client guide](../client/README.md) for scope, endpoint contracts, and browser

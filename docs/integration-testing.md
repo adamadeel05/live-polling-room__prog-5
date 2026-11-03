@@ -1,7 +1,7 @@
-# System integration checks - Part 6
+# System integration checks
 
-Part 6 checks the existing application across all four processes. It adds no
-application features; Part 7 has not started. Automated protocol checks and
+The Part 6 harness checks the application across all four processes. Part 7
+reruns it alongside the final regression tests. Automated protocol checks and
 browser checks are recorded separately.
 
 ## Isolated test environment
@@ -133,7 +133,7 @@ Check the browser at 1366 by 768, 390 by 844, and 320 pixels wide:
 Run `stop` in the preview terminal when finished. This walkthrough changes only
 the temporary test databases and the browser storage for the printed test origin.
 
-## Verification record
+## Part 6 verification record
 
 Verified on November 3, 2026: **62 tests passed, 0 failed**. This includes 8 Poll,
 16 Voting, 12 Results, and 26 client tests. The client total comprises 22 existing
@@ -153,6 +153,25 @@ On November 3, 2026, browser discovery returned no browsers and reported
 provided for that limitation. React DOM interaction, desktop/mobile rendering,
 horizontal overflow, and rendered Recharts sizing remain **unverified**. A source
 CSS review, static React rendering, or successful build is not a browser pass.
+
+## Final review verification (Part 7)
+
+On November 3, 2026, all **64 tests passed, 0 failed**: Poll 9, Voting 16,
+Results 12, and client 27. The production build passed. The four real-process
+system tests reverified REST connections, live updates, duplicate and closed-poll
+rejection, Results reconnection, and SQLite persistence after service restarts.
+
+Regression checks reproduced and fixed Poll requests returning 500 instead of
+415 for unsupported JSON encodings, and delayed closed snapshots losing closure
+when newer counts were already displayed. The decorative chart no longer adds
+a hidden keyboard focus target. Results' unused SQLite dependency was removed.
+
+Computer Use app discovery failed with `Computer Use native pipe is
+unavailable: failed to connect native pipe: The system cannot find the file
+specified. (os error 2)`. Browser discovery also reported `The browser access host
+is unavailable`. No browser interaction or visual check passed during
+Part 7. Use the [simple final checklist](submission-guide.md#final-manual-browser-checklist)
+and the detailed walkthrough above for desktop, mobile, and chart checks.
 
 See the [root README](../README.md), [architecture](architecture.md), and
 [API guide](api.md) for startup commands and application contracts.

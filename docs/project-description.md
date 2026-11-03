@@ -11,7 +11,7 @@ anonymous votes while the results update instantly on the host's screen.
 3. Participants enter the code and vote without creating accounts.
 4. The host watches a live results chart and can close the poll.
 
-## Current implementation: Parts 1-6
+## Current implementation and documentation: Parts 1-7
 
 The React interface connects persistent REST APIs, a Socket.IO results stream,
 and a Recharts results chart. Hosts create and close polls, and participants
@@ -78,12 +78,23 @@ controls, and readable result rows alongside its chart.
 Part 6 adds isolated full-system checks using real service processes, a Vite
 client, temporary SQLite files, and free ports. Automated HTTP/Socket.IO checks
 and manual browser checks are recorded separately in the
-[integration guide](integration-testing.md). Part 7 has not started.
+[integration guide](integration-testing.md).
 
-Part 6 verification passed all 62 automated tests and the production build.
-Interactive browser and rendered-layout checks remain unverified because the
-browser access host was unavailable; the guide includes an isolated manual
-walkthrough for those checks.
+Part 7 provides the final [submission and classroom demonstration guide](submission-guide.md):
+fresh installation, normal or isolated startup, a host/participant demonstration,
+service restart and reconnect checks, and all test/build commands. It documents
+the existing application and its verification limits without adding features.
+
+Part 7 verification on November 3, 2026 passed **64 tests, 0 failed**: Poll 9,
+Voting 16, Results 12, and client 27. The production build passed. Final review
+added regression checks for unsupported JSON charset/encoding errors and closed
+status in older snapshots, adjusted decorative-chart keyboard focus, and removed
+the unused SQLite dependency from Results.
+
+Interactive browser and rendered-layout checks remain **unverified** because
+Computer Use could not connect to its native pipe. The submission guide includes
+an unchecked manual checklist for desktop/mobile layout, forms, voting, chart
+updates, keyboard access, reloads, and reconnects.
 
 See the [architecture](architecture.md) for service ownership and request flows,
 the [API reference](api.md) for endpoint details, and the

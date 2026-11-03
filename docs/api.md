@@ -273,7 +273,7 @@ socket.on('connect', () => {
 | 404 | Poll or endpoint does not exist |
 | 409 | Poll is closed, host repeats a close, or participant already voted |
 | 413 | JSON request body exceeds 16 KB |
-| 415 | Voting or Results request uses an unsupported JSON charset or content encoding |
+| 415 | A service request uses an unsupported JSON charset or content encoding |
 | 500 | Unexpected internal error; response does not expose internal details |
 | 502 | Voting or Results received an unexpected upstream response or invalid data |
 | 503 | Poll room-code retry limit reached, an upstream service is unavailable or timed out, or Results received an upstream 503 |

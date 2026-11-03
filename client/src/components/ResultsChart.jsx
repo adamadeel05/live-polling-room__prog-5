@@ -10,7 +10,7 @@ export default function ResultsChart({ results }) {
     <div className="min-w-0">
       <div className="h-60 min-w-0" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <BarChart data={rows} margin={{ top: 28, right: 8, bottom: 0, left: -22 }} barSize={54}>
+          <BarChart accessibilityLayer={false} data={rows} margin={{ top: 28, right: 8, bottom: 0, left: -22 }} barSize={54}>
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#526761', fontSize: 13 }} />
             <YAxis domain={[0, maximum]} allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#78877f', fontSize: 12 }} />
             <Tooltip cursor={{ fill: '#f5f7f4' }} formatter={(value) => [value, 'Votes']} labelFormatter={(label) => `Option ${label}`} />

@@ -1,56 +1,38 @@
 # Live Polling Room (Slido Lite)
 
-Programming 5 university project. Parts 1-5 provide a responsive React interface,
-three independent Express services, persistent polls and votes, and live results. Each
-application has its own `package.json` and `package-lock.json`; there are no npm workspaces
-or shared server code. Part 6 adds isolated full-system tests and a manual browser
-verification guide.
+A Programming 5 university project built with JavaScript, React, Vite, Tailwind
+CSS, Express, SQLite, Socket.IO, and Recharts. A host creates one question with
+2-4 options, shares a six-digit room code, watches live results, and closes voting.
+Participants join anonymously and vote once per browser-generated participant ID.
 
-## Project structure
+Parts 1-7 are complete. The final automated run passed **64 tests, 0 failed**,
+and the production build. Browser interaction and visual checks remain manual;
+see the verification record below.
 
-| Path | Contents |
-| --- | --- |
-| `client/` | Responsive host and participant screens, live Recharts results, API/storage helpers, frontend and system tests |
-| `services/poll-service/` | Poll REST API, SQLite setup, tests, and service guide |
-| `services/voting-service/` | Vote REST API, Poll Service client, SQLite setup, tests, and service guide |
-| `services/results-service/` | Results REST API, percentage calculations, Socket.IO rooms, tests, and service guide |
-| `docs/` | Project description, Mermaid architecture diagrams, API documentation, and integration checks |
-| `.gitignore` | Rules excluding dependencies, local data, secrets, and generated files |
+Repository: [adamadeel05/live-polling-room__prog-5](https://github.com/adamadeel05/live-polling-room__prog-5)
 
-Each application has its own `package.json`, `package-lock.json`, and
-`.env.example`. Poll and Voting databases are created locally when the services
-start and are excluded from Git.
+## Architecture and project structure
 
-## Documentation
+There are exactly **three independent Express microservices and one React
+client**. Each application has its own `package.json`, lockfile, and process.
+There is no API gateway, extra service, npm workspace, or shared database.
 
-- [Project description and current scope](docs/project-description.md)
-- [Architecture and Mermaid diagrams](docs/architecture.md)
-- [REST API documentation](docs/api.md)
-- [Frontend guide and browser storage](client/README.md)
-- [System integration checks and manual browser walkthrough](docs/integration-testing.md)
-- [Detailed Poll Service guide](services/poll-service/README.md)
-- [Detailed Voting Service guide](services/voting-service/README.md)
-- [Detailed Results Service guide](services/results-service/README.md)
+| Application | Folder | Default port | Responsibility |
+| --- | --- | --- | --- |
+| React client | `client/` | 5173 | Host and participant screens; Recharts and Socket.IO client |
+| Poll Service | `services/poll-service/` | 3001 | Questions, options, room codes, status, and host-authorized closing |
+| Voting Service | `services/voting-service/` | 3002 | Validate votes through Poll REST, persist votes, and prevent duplicates |
+| Results Service | `services/results-service/` | 3003 | Read Poll/Voting REST APIs and broadcast counts and percentages |
 
-## Requirements and dependencies
-
-Use Node.js 22.12 or newer and npm. Setup was verified with Node.js 24.14.0
-and npm 11.11.0.
-
-- Client: React, Vite, Tailwind CSS, Recharts, and `socket.io-client`.
-- All services: Express, `cors`, `dotenv`, and `better-sqlite3` (SQLite).
-- Results Service also includes the Socket.IO server package.
-
-The Poll Service uses SQLite for polls and options. The Voting Service uses its
-own SQLite database for votes and Node's built-in `fetch` for Poll Service REST
-requests. The Results Service uses Socket.IO to broadcast fresh snapshots read
-from those APIs. The React host workspace displays those updates with Recharts.
-Tailwind uses its Vite plugin, so no separate PostCSS or Tailwind config is needed.
+Poll and Voting each own a SQLite database. Results has no database. Voting
+notifies Results after accepting a vote; Results rereads stored counts and sends
+`results-update` to the host's poll room. Architecture diagrams use
+[Mermaid](docs/architecture.md).
 
 ## Install
 
-Install dependencies from the lockfiles by running these commands from the
-project root:
+Use Node.js **22.12 or newer** and npm. The final checks used Node.js 24.14.0.
+From the project root, install all four applications from their lockfiles:
 
 ```powershell
 npm --prefix client ci
@@ -59,341 +41,86 @@ npm --prefix services/voting-service ci
 npm --prefix services/results-service ci
 ```
 
-## Start development
+The client uses React, Vite, Tailwind CSS, Recharts, and `socket.io-client`.
+All services use Express, `cors`, and `dotenv`. Poll and Voting use
+`better-sqlite3`; Results uses the Socket.IO server.
+
+## Run
 
 Open four terminals in the project root and run one command in each:
 
-| Application | Command | URL |
-| --- | --- | --- |
-| React client | `npm --prefix client run dev` | http://localhost:5173 |
-| Poll Service | `npm --prefix services/poll-service run dev` | http://localhost:3001/health |
-| Voting Service | `npm --prefix services/voting-service run dev` | http://localhost:3002/health |
-| Results Service | `npm --prefix services/results-service run dev` | http://localhost:3003/health |
-
-Each process runs independently. Stop it with Ctrl+C in its terminal.
-Services use Node's built-in watch mode to restart after source changes.
-Use `npm --prefix services/<service-name> start` to run a service without watching.
-
-Open `http://localhost:5173` and choose **Create poll** or **Join poll**. Start all
-three backend services to use the full interface. Vite uses `strictPort`, so it
-fails clearly if port 5173 is busy instead of silently using another port.
-
-## Environment and CORS
-
-All four applications work with their default settings without `.env` files.
-To customize them, copy the corresponding `.env.example` to `.env` in that
-application's folder. For example:
+```powershell
+npm --prefix services/poll-service start
+```
 
 ```powershell
-Copy-Item services/poll-service/.env.example services/poll-service/.env
-Copy-Item client/.env.example client/.env
+npm --prefix services/voting-service start
 ```
-
-Each service accepts `PORT` and `CLIENT_ORIGIN`. Their default ports are 3001,
-3002, and 3003; the default allowed browser origin is `http://localhost:5173`.
-CORS is configured on every service for that client origin.
-
-The Poll Service also accepts `DATABASE_PATH`, defaulting to `data/polls.db`
-inside `services/poll-service/`. SQLite creates the folder, database, and tables
-on startup. Polls persist across restarts. See the
-[Poll Service API guide](services/poll-service/README.md) for endpoints, examples,
-validation rules, and host-token authorization.
-
-The Voting Service uses `DATABASE_PATH=data/votes.db` inside its own folder
-and `POLL_SERVICE_URL=http://localhost:3001` to verify polls through REST.
-Start the Poll Service before submitting votes or reading vote counts. See the
-[Voting Service API guide](services/voting-service/README.md) for configuration,
-request examples, and error responses.
-
-Voting also uses `RESULTS_SERVICE_URL=http://localhost:3003` to notify Results
-after saving a vote. Results uses `POLL_SERVICE_URL=http://localhost:3001` and
-`VOTING_SERVICE_URL=http://localhost:3002`. It has no database. Start all three
-services for live updates; Poll and Voting must be available for results reads.
-See the [Results Service guide](services/results-service/README.md) for REST and
-Socket.IO usage.
-
-The client uses `VITE_POLL_SERVICE_URL`, `VITE_VOTING_SERVICE_URL`, and
-`VITE_RESULTS_SERVICE_URL` for REST and Socket.IO connections. They default to
-ports 3001, 3002, and 3003. Vite exposes `VITE_` variables to the browser, so do not
-put secrets in them. Restart an application after changing its environment.
-
-## Verify
-
-With the four applications running:
 
 ```powershell
-Invoke-RestMethod http://localhost:3001/health
-Invoke-RestMethod http://localhost:3002/health
-Invoke-RestMethod http://localhost:3003/health
-(Invoke-WebRequest http://localhost:5173).StatusCode
+npm --prefix services/results-service start
 ```
-
-Each health endpoint returns HTTP 200 and JSON such as:
-
-```json
-{ "status": "ok", "service": "poll-service", "port": 3001 }
-```
-
-Build the client for production:
 
 ```powershell
-npm --prefix client run build
+npm --prefix client run dev
 ```
 
-This writes generated assets to the ignored `client/dist/` folder.
-For a local build preview, first stop the Vite development server and run
-`npm --prefix client run preview` on port 5173.
+Open **http://localhost:5173** after all three services are running. Each service
+has a `GET /health` endpoint at its own address, for example
+http://localhost:3001/health. Stop each process with Ctrl+C in its terminal.
+Services also support `npm --prefix services/<service-name> run dev` for watch mode.
 
-## Part 1 verification results
-
-Verified on November 1, 2026:
-
-- All four `npm run dev` commands started successfully and responded concurrently
-  on ports 5173, 3001, 3002, and 3003.
-- Every `/health` returned HTTP 200 with the expected service name, port, and
-  `status: "ok"`.
-- All three services returned the configured CORS origin and handled OPTIONS
-  preflight requests successfully. An unrelated origin was not granted access
-  by the response headers.
-- Unimplemented `/polls` routes returned 404 in all three services.
-- The client returned HTTP 200; Vite transformed its React modules and generated
-  Tailwind utility CSS successfully.
-- `npm --prefix client run build` passed and produced HTML, CSS, and JavaScript.
-- JavaScript syntax checks passed for all service entry points.
-- Each installed SQLite driver passed a temporary in-memory `SELECT 1` query.
-  No database files or tables were created.
-- Each dependency installation completed with zero vulnerabilities reported by npm.
-
-The verification processes were stopped after these checks. Use the development
-commands above to start them again.
-
-The initial npm registry check failed with `ECONNREFUSED` because the execution
-sandbox restricted network access. Installation succeeded with network permission.
-Initial development startup and build attempts also failed with `spawn EPERM`
-because the sandbox blocked child processes; Vite additionally reported a
-Tailwind native module loading error during that restricted attempt. Rerunning
-the same commands with process permission resolved both errors without changing
-the dependencies. An initial inline SQLite check lost its quotation marks in
-PowerShell; sending the JavaScript through standard input corrected the check.
-
-Setup follows the official [Vite guide](https://vite.dev/guide/),
-[Tailwind Vite integration](https://tailwindcss.com/docs/installation/using-vite),
-and [Express starter](https://expressjs.com/en/starter/hello-world/).
-
-## Part 2: Poll Service
-
-The Poll Service supports poll creation with one question and 2-4 choices,
-unique six-digit room codes, public retrieval by ID or room code, and host-only
-closing. Questions, ordered options with stable IDs, room codes, status, and
-host-token hashes are stored in SQLite. The host token is returned only at creation.
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| POST | `/polls` | Create a poll; return its host token once |
-| GET | `/polls/room/:roomCode` | Read a public poll by six-digit code |
-| GET | `/polls/:id` | Read a public poll by ID |
-| PATCH | `/polls/:id/close` | Close a poll with `Authorization: Bearer <hostToken>` |
-
-Closed polls remain readable with `status: "closed"`. Poll details, IDs, and
-room codes survive restarts. Validation and errors return JSON.
-
-Run the Poll Service's automated HTTP and SQLite tests from the project root:
+For an isolated classroom demo, one terminal can start the same four applications
+on free ports using disposable databases:
 
 ```powershell
-npm --prefix services/poll-service test
+npm --prefix client run preview:integration
 ```
 
-See the [Poll Service API guide](services/poll-service/README.md) for request and
-response examples, error codes, and database details.
+Open its printed client URL. Type `stop` into that terminal to stop the preview
+and remove its temporary data. Its restart commands and the complete professor
+walkthrough are in the [submission guide](docs/submission-guide.md).
 
-Part 2 verification on November 1, 2026: **8 automated tests passed, 0 failed**.
-All service source files also passed JavaScript syntax checks. A separate check
-started the real `src/index.js` process and restarted it twice, confirming that
-questions, options and their IDs, room codes, status, and host authorization
-persist. That check also verified service-relative database paths when launching
-from the project root. Verification used isolated temporary databases and ports;
-the temporary files and verification process were removed afterward.
+## Demonstrate to your professor
 
-The automated test runner initially hit the sandbox's `spawn EPERM` restriction
-and passed when run with process permission. Port 3001 was occupied during the
-process-restart check (`EADDRINUSE`), so that check used an available temporary
-port. Its startup-readiness check was also corrected to wait for both startup
-log lines before asserting the database path. The existing process on port 3001
-was left running, and the Poll Service's default port remains 3001.
+1. Create a poll with three options and show the generated room code.
+2. Join from another browser profile, vote, and show the host's live chart and total.
+3. Use separate profiles for more participants; reloading one participant must not add a vote.
+4. Close voting from the original host tab and show that a new participant cannot vote.
+5. Use the isolated preview's restart commands to demonstrate persistence and reconnection.
 
-## Part 3: Voting Service
+Several tabs in one profile share one participant ID. Keep the creating host tab
+open: its host token is stored in that tab's session storage. See the
+[full demo and manual browser checklist](docs/submission-guide.md).
 
-The Voting Service on port 3002 accepts anonymous votes and stores them in its
-own SQLite database. It calls `GET /polls/:id` on the Poll Service to check that
-the poll exists, is open, and contains the selected option before accepting a
-vote. A database `UNIQUE (poll_id, participant_id)` constraint enforces one vote
-per participant ID per poll, including simultaneous requests.
+## Configuration and saved data
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| POST | `/votes` | Submit `{ "pollId": 1, "optionId": 1, "participantId": "participant-1" }` |
-| GET | `/votes/:pollId/counts` | Read counts grouped by option, including zero votes, plus the total |
-| GET | `/votes/:pollId/total` | Read the total number of votes for a poll |
+Default settings work without `.env` files. Copy an application's `.env.example`
+to `.env` only when customizing it; do not overwrite an existing local file.
 
-Poll and option IDs must be positive safe integer numbers. Participant IDs are
-case-sensitive strings of 1-100 characters after trimming, without null
-characters. Clients should reuse the same anonymous participant ID for duplicate
-protection. These identifiers do not introduce user accounts or authentication.
+Services accept `PORT` and `CLIENT_ORIGIN` (default `http://localhost:5173`).
+Poll and Voting accept `DATABASE_PATH`; relative paths resolve from the owning
+service's folder. Voting uses `POLL_SERVICE_URL` and `RESULTS_SERVICE_URL`;
+Results uses `POLL_SERVICE_URL` and `VOTING_SERVICE_URL`.
 
-Count endpoints also verify the poll exists through the Poll Service. Closed
-polls remain readable, while new votes on them return 409. Missing polls return
-404; invalid options return 400; duplicate votes return 409. If the Poll Service
-is unavailable or exceeds the three-second request timeout, voting returns 503
-without writing a vote. Unexpected upstream responses return 502.
+The client accepts `VITE_POLL_SERVICE_URL`, `VITE_VOTING_SERVICE_URL`, and
+`VITE_RESULTS_SERVICE_URL`. If addresses change, keep service URLs, client URLs,
+and CORS origins consistent, then restart the affected applications.
 
-The open-state check and vote insert belong to separate services. A poll can
-close after the REST check and before insertion; there is no transaction spanning
-both services. This keeps the requested REST integration simple.
+| Owner | Default persistent file |
+| --- | --- |
+| Poll Service | `services/poll-service/data/polls.db` |
+| Voting Service | `services/voting-service/data/votes.db` |
 
-Run the integration and persistence tests from the project root:
+SQLite creates the files and tables on startup. Restarting services preserves
+the data. Normal runs and isolated tests use separate database paths.
+`.gitignore` excludes SQLite files/journals, dependencies, local environment
+files and secrets, builds, caches, and logs. The four `.env.example` files are
+committed so a fresh clone can be configured.
 
-```powershell
-npm --prefix services/voting-service test
-```
+## Tests and production build
 
-Tests use temporary databases and the real Poll Service API without changing
-existing polls or votes. See the [Voting Service API guide](services/voting-service/README.md)
-for examples and storage details.
-
-Part 3 verification on November 2, 2026: **10 automated tests passed, 0 failed**.
-The tests cover successful votes, option membership, closed and missing polls,
-database-enforced duplicates, simultaneous duplicate requests, grouped counts,
-totals, validation, Poll Service failures and timeouts, and persistence. All four
-Voting Service source files passed JavaScript syntax checks.
-
-A separate check started the actual Voting Service process and restarted it
-twice, confirming that votes, counts, totals, and duplicate protection persist.
-It also checked real Poll Service REST integration and service-relative database
-paths when starting from the project root. Port 3002 was already occupied, so
-this check used a free temporary port. Existing processes and normal databases
-were left alone; verification processes and temporary databases were removed.
-A file checksum check confirmed that all 21 existing source, configuration, and
-documentation files outside the Voting Service and this README were unchanged.
-No dependencies were added.
-
-## Part 4: Results Service
-
-The Results Service on port 3003 reads Poll and Voting REST APIs, calculates
-percentages rounded to two decimal places, and sends live snapshots over
-Socket.IO. Results include every option, including options with no votes.
-Closed polls remain readable. There is no extra database or result cache.
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| GET | `/results/:pollId` | Read poll details, vote counts, total votes, and percentages |
-| POST | `/internal/votes` | Receive `{ "pollId": 1 }` from Voting, reread stored counts, and broadcast |
-
-Socket.IO uses the same port. Clients can send `join-poll` with `{ pollId: 1 }`
-or connect with `auth: { pollId: 1 }`. A socket watches one poll at a time and
-receives `results-update` with the same payload as the GET endpoint. The auth
-payload is a subscription parameter, not a login system. It is reused on
-reconnection, when the server sends another fresh snapshot. Join failures and
-refresh failures use `results-error`.
-
-Voting sends its existing 201 response after the vote is stored, then notifies
-Results in the background. Notification failures are logged and do not undo a
-vote or turn it into an error response. These notifications are best effort,
-with a two-second timeout and no durable retry queue. A missed update is
-recovered by a GET, rejoining/reconnecting, or the next successful notification.
-The Results Service fetches fresh data on every request and serializes live
-refreshes for each poll so older snapshots cannot overwrite newer updates.
-
-In Part 4, the React page remained unchanged. The service guide includes a
-standalone Socket.IO client example for trying the stream independently.
-
-Run every service test suite and the client build from the project root:
-
-```powershell
-npm --prefix services/poll-service test
-npm --prefix services/voting-service test
-npm --prefix services/results-service test
-npm --prefix client run build
-```
-
-Install all four applications first: Results integration tests reuse the existing
-client Socket.IO dependency and the real Poll and Voting apps with temporary
-databases. No new dependencies are required.
-
-Part 4 verification on November 2, 2026: **36 tests passed, 0 failed** across
-Poll (8), Voting (16), and Results (12). The client production build also passed.
-The new tests cover percentages, empty and closed polls, real vote-triggered
-Socket.IO broadcasts, room isolation, reconnect snapshots, disconnected and
-replaced subscribers, concurrent votes, invalid upstream data, timeouts, and
-notification failures that preserve accepted votes. Tests use isolated temporary
-databases and do not alter normal poll or vote data. The React and Poll Service
-source files are unchanged in Part 4.
-
-## Part 5: React frontend
-
-The homepage provides Create poll and Join poll paths. Hosts can create a question
-with 2-4 options, copy the generated six-digit code, follow a live Recharts graph
-with readable vote totals and percentages, and confirm closing the poll. The
-host workspace is loaded on demand so the homepage does not load the chart code.
-
-Participants enter a room code, choose one answer, and see a confirmation after
-voting. A browser-generated participant ID and per-poll receipt persist in local
-storage. SQLite remains responsible for enforcing one vote per ID per poll.
-Host tokens are kept in memory and tab-scoped session storage, never in URLs or
-participant responses. Reloading the original host tab restores its controls.
-
-The frontend uses the existing REST endpoints and emits `join-poll` on each
-Socket.IO connection, including reconnections. Initial REST snapshots and socket
-updates are merged so an old response cannot lower a known total or reopen a
-closed poll. Host results can be refreshed manually. Participants check status
-when their tab becomes visible and before submitting a vote, since closing a poll
-does not generate a vote notification in the current backend.
-
-Loading, invalid codes, missing polls, duplicate votes, closed polls, unavailable
-storage, and connection failures have visible states. Forms have labels and
-keyboard focus styles; results include readable answer rows alongside the chart.
-Layouts adapt to small screens and respect reduced-motion preferences.
-
-Run frontend tests and build from the project root:
-
-```powershell
-npm --prefix client test
-npm --prefix client run build
-```
-
-The frontend tests cover API requests and errors, persistent storage, delayed
-snapshot handling, and static React rendering through Vite. Static rendering
-tests check forms and accessible results text; they do not simulate browser
-interactions, layout, chart sizing, or reconnection effects.
-
-See the [frontend guide](client/README.md) for navigation, storage behavior,
-configuration, and the manual browser verification steps.
-
-Part 5 verification on November 3, 2026: **58 automated tests passed, 0 failed**:
-22 client tests and all 36 existing backend tests. The production build passed,
-with the host/chart code split from the initial application bundle. No packages
-or backend source files were changed.
-
-Interactive browser and visual/mobile verification remain incomplete. Computer
-Use ended because it could not confidently identify Chrome's current URL for
-its policy checks. No browser checks are claimed as passed. The isolated preview
-was stopped and its temporary files and databases were removed.
-
-## Part 6: Full system integration and testing
-
-The system test harness starts the actual Poll, Voting, and Results entry points
-and the Vite client on free ports. It supplies matching REST URLs, frontend URLs,
-and CORS configuration. Poll and Voting use disposable SQLite files in a temporary
-folder, so the checks do not use existing application data or stop other servers.
-
-Four system tests verify startup, creating and joining by room code, three
-participants voting while the host subscription receives live counts and
-percentages, duplicate protection, host-only closure, and rejection of further
-votes. They also stop and restart the Results process to check automatic
-Socket.IO reconnection and recovery of votes
-accepted during the outage. Actual Poll and Voting process restarts preserve
-open and closed polls, option IDs, room codes, counts, and host authority.
-
-Run all automated checks from the project root:
+From the project root:
 
 ```powershell
 npm --prefix services/poll-service test
@@ -403,29 +130,50 @@ npm --prefix client test
 npm --prefix client run build
 ```
 
-Run only the new system tests with `npm --prefix client run test:integration`.
-For an isolated manual preview, run `npm --prefix client run preview:integration`
-and open the printed client URL. Its terminal accepts service restart commands
-and `stop`; stopping also removes its temporary data. See the
-[integration testing guide](docs/integration-testing.md) for the full walkthrough.
+The client command includes the four real-process system tests. Run only those
+with `npm --prefix client run test:integration`. Tests use temporary databases
+and clean up their own processes. The production build is written to `client/dist`.
 
-Part 6 verification on November 3, 2026: **62 automated tests passed, 0 failed**:
-Poll 8, Voting 16, Results 12, and client 26, including the four new system tests.
-The production build passed. The manual-preview startup, all restart commands,
-explicit stop, and cleanup after piped input ends also passed smoke checks.
-No new application defect was reproduced; application source and dependencies
-are unchanged. Test infrastructure now scopes frontend discovery to test files,
-runs those files serially, and cleans up the preview when its input closes.
+Final verification on November 3, 2026:
 
-Browser discovery reported `The browser access host is unavailable`.
-React DOM interactions, desktop/mobile layouts, horizontal overflow, and rendered
-chart sizing remain unverified. HTTP, Socket.IO, static React rendering, and
-build checks are recorded separately from the manual browser checklist.
+| Suite | Passed | Failed |
+| --- | --- | --- |
+| Poll Service | 9 | 0 |
+| Voting Service | 16 | 0 |
+| Results Service | 12 | 0 |
+| Client, including system tests | 27 | 0 |
+| **Total** | **64** | **0** |
 
-## Scope
+The production build passed. Tests cover creation/code lookup, host-token privacy
+and closing, validation, concurrent duplicates, counts/percentages, live updates,
+Results outages and automatic reconnects, and actual Poll/Voting process restarts.
+Final review fixed unsupported JSON encodings returning 500 instead of 415,
+preserved closure from delayed result snapshots, and removed keyboard focus from
+the decorative chart. The unused Results SQLite dependency was removed.
 
-Parts 1-6 include the React host/participant interface, configured ports and CORS,
-service health endpoints, persistent Poll and Voting APIs, REST/Socket.IO results
-with Recharts, and isolated full-system integration tests. The manual browser
-checks above remain outstanding because browser access was unavailable.
-Part 7 has not been started.
+## Verification limits
+
+Computer Use could not connect to its native helper (`os error 2`), and browser
+discovery reported `The browser access host is unavailable`. React form
+interactions, rendered chart sizing, desktop/mobile overflow, and keyboard
+behavior remain **unverified in a browser**. Static rendering, CSS source review,
+API/Socket.IO tests, and a build are recorded separately from visual checks.
+Use the [manual checklist](docs/submission-guide.md#final-manual-browser-checklist)
+before presenting.
+
+The project intentionally uses anonymous IDs rather than user accounts. A new
+profile or cleared storage creates another ID. Notifications are best-effort;
+a reconnect, refresh, or later notification recovers stored totals after a missed
+update. Poll closure and vote insertion occur in different services, so a vote
+already being validated can race with closing. These limits are explained in
+[architecture](docs/architecture.md) and [API documentation](docs/api.md).
+
+## Documentation
+
+- [Run and demonstrate the submitted project](docs/submission-guide.md)
+- [Project description and technology choices](docs/project-description.md)
+- [Architecture and Mermaid diagrams](docs/architecture.md)
+- [REST and Socket.IO API reference](docs/api.md)
+- [Integration tests, safe preview, and browser walkthrough](docs/integration-testing.md)
+- [Frontend routes and browser storage](client/README.md)
+- [Poll Service](services/poll-service/README.md), [Voting Service](services/voting-service/README.md), [Results Service](services/results-service/README.md)

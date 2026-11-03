@@ -1,4 +1,4 @@
-# React client - Parts 5-6
+# React client - Parts 5-7
 
 The client provides poll creation, room joining, anonymous voting, and a host
 results screen with Recharts and Socket.IO. It uses React, Vite, and Tailwind
@@ -116,7 +116,7 @@ npm --prefix client run preview:integration
 The preview prints its own client URL and uses temporary databases and free
 ports. Follow the [integration guide](../docs/integration-testing.md) for its
 restart commands, browser walkthrough, responsive checks, and measured results.
-Part 7 has not started.
+The [submission guide](../docs/submission-guide.md) gives the professor demonstration.
 
 See the [API guide](../docs/api.md) and [architecture](../docs/architecture.md)
 for unchanged service contracts and the vote-to-results flow.
@@ -138,4 +138,16 @@ and persistence without using normal databases.
 Browser discovery reported that its access host was unavailable. React DOM
 interaction, responsive rendering, and chart sizing remain **unverified**; use
 the [isolated manual walkthrough](../docs/integration-testing.md) for those
-checks. Part 7 has not started.
+checks.
+
+## Part 7 verification record
+
+The final run passed **27 client tests, 0 failed**, all **64 project tests**, and
+the production build. A new regression preserves closed status from a delayed,
+lower-total snapshot while retaining newer counts and percentages. The chart is
+decorative beside its readable result rows and no longer adds a hidden keyboard
+focus target. No framework or frontend dependency was added.
+
+Computer Use could not connect to its native helper (`os error 2`). Browser
+interactions, keyboard behavior, rendered charts, and desktop/mobile layouts
+remain unverified. Follow the [final manual checklist](../docs/submission-guide.md#final-manual-browser-checklist).

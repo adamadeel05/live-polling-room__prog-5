@@ -75,7 +75,8 @@ count endpoint also consults the Poll API, so both services must be available.
 Errors use `{ "error": "Readable explanation." }`: invalid IDs or bodies return
 400, missing polls return 404, malformed or unexpected upstream responses return
 502, and unavailable services, timeouts, or upstream 503 responses return 503.
-Invalid JSON returns 400 and bodies over 16 KB return 413.
+Invalid JSON returns 400, bodies over 16 KB return 413, and unsupported JSON
+charsets or content encodings return 415.
 
 ## Socket.IO events
 

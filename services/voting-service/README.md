@@ -194,6 +194,7 @@ Errors have the shape `{ "error": "Readable explanation." }`.
 | 404 | Poll does not exist, or the endpoint is unknown |
 | 409 | Poll is closed, or the participant has already voted in that poll |
 | 413 | JSON request body exceeds 16 KB |
+| 415 | Unsupported JSON charset or content encoding |
 | 502 | Poll Service returned an unexpected HTTP response, invalid JSON, or invalid poll data |
 | 503 | Poll Service is unavailable or its request timed out |
 | 500 | Unexpected server error; internal details are not returned to the client |

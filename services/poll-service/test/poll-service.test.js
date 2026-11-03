@@ -166,6 +166,24 @@ test('invalid poll payloads are rejected without writing poll rows', async () =>
   assert.equal(typeof (await tooLarge.json()).error, 'string');
 });
 
+test('unsupported JSON charsets and content encodings return 415 without database writes', async () => {
+  const responses = [];
+  for (const headers of [
+    { 'Content-Type': 'application/json; charset=iso-8859-1' },
+    { 'Content-Encoding': 'unsupported' },
+  ]) {
+    responses.push(await request('/polls', {
+      method: 'POST',
+      body: { question: 'Which language?', options: ['JavaScript', 'Java'] },
+      headers,
+    }));
+  }
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM polls').get().count, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM poll_options').get().count, 0);
+  assert.deepEqual(responses.map((response) => response.status), [415, 415]);
+  for (const response of responses) assertError(response, 415);
+});
+
 test('malformed identifiers and missing polls produce clear 400 and 404 errors', async () => {
   for (const id of ['abc', '0', '-1', '1.5', '9007199254740992']) {
     assertError(await request(`/polls/${id}`), 400);

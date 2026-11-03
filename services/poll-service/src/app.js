@@ -170,6 +170,9 @@ export function createApp(db, { port = 3001, clientOrigin = 'http://localhost:51
     if (error.type === 'entity.too.large') {
       return res.status(413).json({ error: 'Request body exceeds the 16 KB limit.' });
     }
+    if (error.status === 415) {
+      return res.status(415).json({ error: 'Request body uses an unsupported charset or content encoding.' });
+    }
     if (error.status === 400) {
       return res.status(400).json({ error: 'Invalid request.' });
     }

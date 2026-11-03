@@ -7,6 +7,8 @@ export function mergePoll(current, incoming) {
 
 export function mergeResults(current, incoming) {
   if (current?.pollId !== incoming.pollId) return incoming;
-  if (current.totalVotes > incoming.totalVotes) return current;
-  return current.status === 'closed' ? { ...incoming, status: 'closed' } : incoming;
+  const latest = current.totalVotes > incoming.totalVotes ? current : incoming;
+  return current.status === 'closed' || incoming.status === 'closed'
+    ? { ...latest, status: 'closed' }
+    : latest;
 }

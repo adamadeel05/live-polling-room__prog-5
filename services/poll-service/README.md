@@ -152,6 +152,7 @@ Errors have the shape `{ "error": "Readable explanation." }`.
 | 404 | Poll does not exist, or endpoint is unknown |
 | 409 | The authorized host tried to close an already closed poll |
 | 413 | JSON request body exceeds 16 KB |
+| 415 | Unsupported JSON charset or content encoding |
 | 503 | No available room code was generated within 20 attempts |
 | 500 | Unexpected server error; internal details are not returned to the client |
 
@@ -159,7 +160,7 @@ Errors have the shape `{ "error": "Readable explanation." }`.
 
 The automated tests use Node's built-in test runner, real HTTP requests, and
 temporary SQLite files. They cover all endpoints, CORS preflight, validation,
-malformed and oversized JSON, missing polls, option order, unique room codes,
+malformed and oversized JSON, unsupported JSON encodings, missing polls, option order, unique room codes,
 host authorization, token privacy, and repeated close requests. They also close
 and reopen the database and HTTP server to verify that open and closed polls,
 option IDs, room codes, and host authority persist. Temporary test data is
