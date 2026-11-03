@@ -47,6 +47,11 @@ preserves closed status against stale snapshots. Manual refresh and retry
 restart the connection and snapshot request. See the
 [client guide](../client/README.md) for routes and storage behavior.
 
+Part 6 exercises these contracts through real service processes with isolated
+databases and free ports. Use the [integration guide](integration-testing.md)
+for automated checks and a manual browser preview. Its printed URLs replace the
+normal development defaults shown in this reference during isolated testing.
+
 ## Health
 
 `GET /health` returns 200 on all three services. Its JSON identifies the service

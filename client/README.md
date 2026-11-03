@@ -1,4 +1,4 @@
-# React client - Part 5
+# React client - Parts 5-6
 
 The client provides poll creation, room joining, anonymous voting, and a host
 results screen with Recharts and Socket.IO. It uses React, Vite, and Tailwind
@@ -104,18 +104,38 @@ Client tests use Node's built-in test runner to check API requests and errors,
 timeouts, browser storage, and out-of-order snapshot handling. Four static React
 rendering tests run through Vite to check homepage links, labelled forms, and
 accessible results rows. They do not exercise browser events, effects, layout,
-or chart sizing. For browser checks, start all four
-applications and create a new poll. Join its code in another browser window,
-submit a vote, and watch the host's chart and counts update. Reload the
-participant page to check confirmation, then close the poll from the creating
-host tab and refocus the participant page to check its closed state. Also check
-invalid codes and retry behavior while a service is unavailable. Use a separate
-browser profile when testing a different anonymous participant.
+or chart sizing. Part 6 adds real-process HTTP and Socket.IO integration tests,
+included in the normal client test command. To run only that suite, or to start
+an isolated browser preview:
+
+```powershell
+npm --prefix client run test:integration
+npm --prefix client run preview:integration
+```
+
+The preview prints its own client URL and uses temporary databases and free
+ports. Follow the [integration guide](../docs/integration-testing.md) for its
+restart commands, browser walkthrough, responsive checks, and measured results.
+Part 7 has not started.
 
 See the [API guide](../docs/api.md) and [architecture](../docs/architecture.md)
 for unchanged service contracts and the vote-to-results flow.
+
+## Part 5 verification record
 
 Verified on November 3, 2026: **22 client tests passed, 0 failed**; the production
 build and all 36 backend tests also passed. Interactive and visual browser checks
 were blocked when Computer Use could not confidently identify Chrome's current
 URL, so the manual browser steps above remain unverified.
+
+## Part 6 verification record
+
+Verified on November 3, 2026: **26 client tests passed, 0 failed**, including the
+4 real-process system tests. All **62 project tests** and the production build
+passed. HTTP and Socket.IO checks verified the four-process workflow, reconnect,
+and persistence without using normal databases.
+
+Browser discovery reported that its access host was unavailable. React DOM
+interaction, responsive rendering, and chart sizing remain **unverified**; use
+the [isolated manual walkthrough](../docs/integration-testing.md) for those
+checks. Part 7 has not started.

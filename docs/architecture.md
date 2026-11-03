@@ -145,6 +145,15 @@ and before submitting a vote. Poll closing has no backend socket broadcast:
 those reads and the closed-poll 409 path update participant status. Hosts update
 their own closed state after the authorized close request.
 
+## Isolated system verification (Part 6)
+
+The integration helper starts the same four applications as child processes,
+using free ports, injected service/client URLs, and separate temporary Poll and
+Voting SQLite files. It owns only those processes and test files. Real service
+restarts exercise persistence and Socket.IO reconnection without touching normal
+development data. The [integration guide](integration-testing.md) distinguishes
+HTTP/socket tests, static React checks, and manual browser verification.
+
 See the [project description](project-description.md), [API reference](api.md),
 and [client guide](../client/README.md) for scope, endpoint contracts, and browser
 state. The [root README](../README.md) lists startup commands.

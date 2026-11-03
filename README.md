@@ -3,17 +3,18 @@
 Programming 5 university project. Parts 1-5 provide a responsive React interface,
 three independent Express services, persistent polls and votes, and live results. Each
 application has its own `package.json` and `package-lock.json`; there are no npm workspaces
-or shared server code.
+or shared server code. Part 6 adds isolated full-system tests and a manual browser
+verification guide.
 
 ## Project structure
 
 | Path | Contents |
 | --- | --- |
-| `client/` | Responsive host and participant screens, live Recharts results, API/storage helpers, and frontend tests |
+| `client/` | Responsive host and participant screens, live Recharts results, API/storage helpers, frontend and system tests |
 | `services/poll-service/` | Poll REST API, SQLite setup, tests, and service guide |
 | `services/voting-service/` | Vote REST API, Poll Service client, SQLite setup, tests, and service guide |
 | `services/results-service/` | Results REST API, percentage calculations, Socket.IO rooms, tests, and service guide |
-| `docs/` | Project description, Mermaid architecture diagrams, and API documentation |
+| `docs/` | Project description, Mermaid architecture diagrams, API documentation, and integration checks |
 | `.gitignore` | Rules excluding dependencies, local data, secrets, and generated files |
 
 Each application has its own `package.json`, `package-lock.json`, and
@@ -26,6 +27,7 @@ start and are excluded from Git.
 - [Architecture and Mermaid diagrams](docs/architecture.md)
 - [REST API documentation](docs/api.md)
 - [Frontend guide and browser storage](client/README.md)
+- [System integration checks and manual browser walkthrough](docs/integration-testing.md)
 - [Detailed Poll Service guide](services/poll-service/README.md)
 - [Detailed Voting Service guide](services/voting-service/README.md)
 - [Detailed Results Service guide](services/results-service/README.md)
@@ -376,9 +378,54 @@ Use ended because it could not confidently identify Chrome's current URL for
 its policy checks. No browser checks are claimed as passed. The isolated preview
 was stopped and its temporary files and databases were removed.
 
+## Part 6: Full system integration and testing
+
+The system test harness starts the actual Poll, Voting, and Results entry points
+and the Vite client on free ports. It supplies matching REST URLs, frontend URLs,
+and CORS configuration. Poll and Voting use disposable SQLite files in a temporary
+folder, so the checks do not use existing application data or stop other servers.
+
+Four system tests verify startup, creating and joining by room code, three
+participants voting while the host subscription receives live counts and
+percentages, duplicate protection, host-only closure, and rejection of further
+votes. They also stop and restart the Results process to check automatic
+Socket.IO reconnection and recovery of votes
+accepted during the outage. Actual Poll and Voting process restarts preserve
+open and closed polls, option IDs, room codes, counts, and host authority.
+
+Run all automated checks from the project root:
+
+```powershell
+npm --prefix services/poll-service test
+npm --prefix services/voting-service test
+npm --prefix services/results-service test
+npm --prefix client test
+npm --prefix client run build
+```
+
+Run only the new system tests with `npm --prefix client run test:integration`.
+For an isolated manual preview, run `npm --prefix client run preview:integration`
+and open the printed client URL. Its terminal accepts service restart commands
+and `stop`; stopping also removes its temporary data. See the
+[integration testing guide](docs/integration-testing.md) for the full walkthrough.
+
+Part 6 verification on November 3, 2026: **62 automated tests passed, 0 failed**:
+Poll 8, Voting 16, Results 12, and client 26, including the four new system tests.
+The production build passed. The manual-preview startup, all restart commands,
+explicit stop, and cleanup after piped input ends also passed smoke checks.
+No new application defect was reproduced; application source and dependencies
+are unchanged. Test infrastructure now scopes frontend discovery to test files,
+runs those files serially, and cleans up the preview when its input closes.
+
+Browser discovery reported `The browser access host is unavailable`.
+React DOM interactions, desktop/mobile layouts, horizontal overflow, and rendered
+chart sizing remain unverified. HTTP, Socket.IO, static React rendering, and
+build checks are recorded separately from the manual browser checklist.
+
 ## Scope
 
-Parts 1-5 include the React host/participant interface, configured ports and CORS,
-service health endpoints, persistent Poll and Voting APIs, and REST/Socket.IO
-results with Recharts. Part 6 has not been started. Backend source code and
-dependencies are unchanged in Part 5.
+Parts 1-6 include the React host/participant interface, configured ports and CORS,
+service health endpoints, persistent Poll and Voting APIs, REST/Socket.IO results
+with Recharts, and isolated full-system integration tests. The manual browser
+checks above remain outstanding because browser access was unavailable.
+Part 7 has not been started.

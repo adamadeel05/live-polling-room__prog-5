@@ -11,7 +11,7 @@ anonymous votes while the results update instantly on the host's screen.
 3. Participants enter the code and vote without creating accounts.
 4. The host watches a live results chart and can close the poll.
 
-## Current implementation: Parts 1-5
+## Current implementation: Parts 1-6
 
 The React interface connects persistent REST APIs, a Socket.IO results stream,
 and a Recharts results chart. Hosts create and close polls, and participants
@@ -74,6 +74,16 @@ npm --prefix client run build
 Part 5 uses the existing backend contracts and installed dependencies. The
 responsive interface uses teal, cream, and lime, labelled forms, keyboard
 controls, and readable result rows alongside its chart.
+
+Part 6 adds isolated full-system checks using real service processes, a Vite
+client, temporary SQLite files, and free ports. Automated HTTP/Socket.IO checks
+and manual browser checks are recorded separately in the
+[integration guide](integration-testing.md). Part 7 has not started.
+
+Part 6 verification passed all 62 automated tests and the production build.
+Interactive browser and rendered-layout checks remain unverified because the
+browser access host was unavailable; the guide includes an isolated manual
+walkthrough for those checks.
 
 See the [architecture](architecture.md) for service ownership and request flows,
 the [API reference](api.md) for endpoint details, and the

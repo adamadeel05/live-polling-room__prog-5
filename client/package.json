@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "test:integration": "node --test test/system.test.js",
+    "preview:integration": "node scripts/integration-preview.js"
   },
   "engines": {
     "node": ">=22.12.0"
